@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: denla-queue-new-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Prisma resolves SQLite paths relative to prisma/schema.prisma (/app/prisma).
+      # This points to the persistent volume mounted at /app/data.
+      DATABASE_URL: file:../data/school_queue.db
+      APP_BASE_URL: http://localhost:8080
+    volumes:
+      - queue_data:/app/data
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: denla-queue-new-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  nginx:
+    image: nginx:alpine
+    container_name: denla-queue-new-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  queue_data:
+    driver: local

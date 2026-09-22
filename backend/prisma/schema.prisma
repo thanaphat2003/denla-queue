@@ -1,0 +1,142 @@
+// School Admin Queue Booking System - Prisma Schema
+// Database: SQLite (on-premise, single-file, easy backup)
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ประเภทบริการ เช่น จ่ายค่าเทอม, สมัครเรียน, ติดต่อเอกสาร
+model Service {
+  id        Int      @id @default(autoincrement())
+  name      String
+  nameEn    String?  @map("name_en")
+  description String?
+  descriptionEn String? @map("description_en")
+  prefix    String   @unique // ใช้สร้างเลขคิว เช่น "A", "B"
+  sortOrder Int      @default(0) @map("sort_order")
+  section   String?  @default("GENERAL") // เช่น Admission / Academy / Finance
+  icon      String?  @default("🏫")
+  iconName  String?  @map("icon_name")
+  queues    Queue[]
+  counters  Counter[]
+  contactSubjects ContactSubject[]
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("services")
+}
+
+model AdminUser {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admin_users")
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model ContactSubject {
+  id        Int      @id @default(autoincrement())
+  name      String
+  nameEn    String?  @map("name_en")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  serviceId Int?     @map("service_id")
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_subjects")
+  @@unique([serviceId, name])
+}
+
+// รายการคิวที่ผู้ปกครอง/ผู้ติดต่อจอง
+model Queue {
+  id              Int         @id @default(autoincrement())
+  ticketNo        String      @map("ticket_no") // เช่น A-001
+  serviceId       Int         @map("service_id")
+  service         Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  userName        String      @map("user_name")
+  userPhone       String      @map("user_phone")
+  userEmail       String      @map("user_email")
+  contactSubject  String      @default("") @map("contact_subject")
+  contactSubjectEn String?    @map("contact_subject_en")
+  language        String      @default("TH")
+  queueType       String      @default("WALK_IN") @map("queue_type") // WALK_IN / BOOKING
+  status          String      @default("WAITING")
+  counterNo       Int?        @map("counter_no")
+  servedBy        String?     @map("served_by")
+  serviceStartedAt DateTime?  @map("service_started_at")
+  completedAt     DateTime?   @map("completed_at")
+  bookingDate     DateTime?   @map("booking_date") // Date of the booking (no time part)
+  timeSlotId      Int?        @map("time_slot_id")
+  timeSlot        TimeSlot?   @relation(fields: [timeSlotId], references: [id])
+  isCheckedIn     Boolean     @default(false) @map("is_checked_in")
+  checkedInAt     DateTime?   @map("checked_in_at")
+  bookingExpired  Boolean     @default(false) @map("booking_expired")
+  isEmailNotified Boolean     @default(false) @map("is_email_notified") // แจ้งเตือน "ใกล้ถึงคิว" แล้วหรือยัง
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  counters        Counter[]  // ประวัติ counter ที่เคยเรียกคิวนี้ (currentQueueId ชี้กลับมา)
+
+  @@index([serviceId, status, bookingDate])
+  @@map("queues")
+}
+
+// แม่แบบช่วงเวลาให้บริการ (Time Slots)
+model TimeSlot {
+  id        Int      @id @default(autoincrement())
+  startTime String   @map("start_time") // เช่น "09:00"
+  endTime   String   @map("end_time")   // เช่น "09:30"
+  capacity  Int      @default(10)       // จำนวนโควตาสูงสุดต่อช่วงเวลา
+  isActive  Boolean  @default(true)     @map("is_active") // เปิดรับจองหรือไม่
+  queues    Queue[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("time_slots")
+}
+
+// ประกาศ/แจ้งเตือนที่แสดงบนหน้าจองคิว
+model Announcement {
+  id          Int       @id @default(autoincrement())
+  title       String
+  body        String
+  isActive    Boolean   @default(true)  @map("is_active")
+  startDate   DateTime? @map("start_date")  // null = แสดงทันที
+  endDate     DateTime? @map("end_date")    // null = ไม่มีวันหมดอายุ
+  createdAt   DateTime  @default(now())    @map("created_at")
+  updatedAt   DateTime  @updatedAt         @map("updated_at")
+
+  @@map("announcements")
+}
+
+// ช่องบริการ (เคาน์เตอร์)
+model Counter {
+  id             Int      @id @default(autoincrement())
+  name           String   // เช่น "ช่องบริการ 1"
+  type           String   @default("NORMAL") // NORMAL / ACADEMY
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true)
+  serviceId      Int?     @map("service_id")
+  service        Service? @relation(fields: [serviceId], references: [id])
+  currentQueueId Int?     @map("current_queue_id")
+  currentQueue   Queue?   @relation(fields: [currentQueueId], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("counters")
+}

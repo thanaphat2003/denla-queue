@@ -1,0 +1,1 @@
+ALTER TABLE "queues" ADD COLUMN "booking_expired" BOOLEAN NOT NULL DEFAULT false;

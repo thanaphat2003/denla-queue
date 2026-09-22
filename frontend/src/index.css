@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply font-body bg-canvas text-ink;
+}
+
+/* --- Signature element: ticket stub ---
+   ทุกที่ที่ต้องแสดง "คิว" เป็นชิ้นเป็นอัน (ใบยืนยันคิว, การ์ดคิวฝั่งแอดมิน, ป้ายเรียกคิวบนจอ TV)
+   ใช้รูปทรง "ตั๋วคิว" แบบตั๋วจริงที่มีรอยปรุขอบ เพื่อให้เห็นภาพเดียวกันตลอดทั้งระบบ */
+.ticket-stub {
+  position: relative;
+  background: white;
+  border-radius: 14px;
+}
+
+.ticket-stub::before,
+.ticket-stub::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: var(--ticket-notch-bg, #F5F6F8);
+  border-radius: 999px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ticket-stub::before { left: -11px; }
+.ticket-stub::after { right: -11px; }
+
+.ticket-stub-perforation {
+  border-left: 2px dashed rgba(31, 56, 100, 0.25);
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(201, 151, 46, 0.45); }
+  100% { box-shadow: 0 0 0 14px rgba(201, 151, 46, 0); }
+}
+.calling-pulse {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
